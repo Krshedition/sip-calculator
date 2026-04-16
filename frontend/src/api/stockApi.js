@@ -1,8 +1,14 @@
 import axios from 'axios';
 
+let apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+// Ensure the base URL ends with /api if it doesn't already
+if (apiBaseUrl !== '/api' && !apiBaseUrl.endsWith('/api')) {
+  apiBaseUrl = apiBaseUrl.replace(/\/$/, '') + '/api';
+}
+
 // Create a configured axios instance pointing to the proxy or remote backend
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: apiBaseUrl,
   timeout: 30000, // 30 seconds
 });
 
