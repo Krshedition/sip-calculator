@@ -14,11 +14,10 @@ class Settings(BaseSettings):
     TWELVE_DATA_API_KEY: str
 
     # CORS origins that are allowed to call this backend.
-    # Only the local Vite dev server is whitelisted. Add your production
-    # domain here (as another list entry) when you deploy.
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "*"
     ]
 
     # Rate-limit settings for yfinance proxy endpoints.

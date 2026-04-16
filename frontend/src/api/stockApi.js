@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Create a configured axios instance pointing to the proxy
+// Create a configured axios instance pointing to the proxy or remote backend
 export const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 30000, // 30 seconds
 });
 
