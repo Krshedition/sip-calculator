@@ -38,32 +38,56 @@ class YFinanceClient:
             return {"results": results[:output_size]}
 
     def get_time_series(self, symbol: str, start_date: str = None, end_date: str = None) -> dict:
-        """Fetch monthly OHLC time series data using yfinance (Blocking call, run in thread)."""
-        ticker = yf.Ticker(symbol)
+        """Fetch monthly OHLC time series data using Yahoo API directly to bypass Vercel serverless restrictions."""
+        import time
+        from datetime import datetime
+        
+        start_ts = int(time.mktime(datetime.strptime(start_date, "%Y-%m-%d").timetuple()))
+        end_ts = int(time.mktime(datetime.strptime(end_date, "%Y-%m-%d").timetuple()))
+        
+        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}"
+        params = {
+            "period1": start_ts,
+            "period2": end_ts,
+            "interval": "1mo",
+            "events": "history",
+            "includeAdjustedClose": "true"
+        }
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         
         try:
-            # yfinance expects date strings in YYYY-MM-DD
-            # Using interval="1mo" to match the simulator's monthly frequency
-            df = ticker.history(start=start_date, end=end_date, interval="1mo", auto_adjust=True)
+            with httpx.Client(timeout=15.0) as client:
+                res = client.get(url, params=params, headers=headers)
+                res.raise_for_status()
+                data = res.json()
+                
+            result = data.get("chart", {}).get("result")
+            if not result:
+                return {"values": []}
+                
+            timestamps = result[0].get("timestamp", [])
+            indicators = result[0]["indicators"]["quote"][0]
+            adjclose = result[0]["indicators"].get("adjclose", [{}])[0].get("adjclose", indicators.get("close", []))
+            
+            values = []
+            for i, ts in enumerate(timestamps):
+                if not indicators.get("open") or indicators["open"][i] is None:
+                    continue
+                    
+                dt_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+                values.append({
+                    "datetime": dt_str,
+                    "open": float(indicators["open"][i]),
+                    "high": float(indicators["high"][i]),
+                    "low": float(indicators["low"][i]),
+                    "close": float(adjclose[i]),
+                })
+            return {"values": values}
+            
         except Exception as e:
-            raise Exception(f"yfinance failed to fetch data: {str(e)}")
-            
-        if df.empty:
-            return {"values": []}
-            
-        values = []
-        for date, row in df.iterrows():
-            # Sometimes month end dates get returned slightly differently, we extract YYYY-MM-DD
-            dt_str = date.strftime("%Y-%m-%d")
-            values.append({
-                "datetime": dt_str,
-                "open": float(row["Open"]),
-                "high": float(row["High"]),
-                "low": float(row["Low"]),
-                "close": float(row["Close"]),
-            })
-            
-        return {"values": values}
+            raise Exception(f"Direct Yahoo API fetch failed: {str(e)}")
 
     def get_quote(self, symbol: str) -> dict:
         """Get current quote for a symbol using yfinance (Blocking call, run in thread)."""
