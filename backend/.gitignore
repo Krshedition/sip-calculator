@@ -1,0 +1,27 @@
+# backend/.gitignore
+# Virtual environment — never commit this
+venv/
+.venv/
+env/
+
+# Environment variables — API keys live here, NEVER commit
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
