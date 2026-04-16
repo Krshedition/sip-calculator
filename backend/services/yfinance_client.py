@@ -90,22 +90,35 @@ class YFinanceClient:
             raise Exception(f"Direct Yahoo API fetch failed: {str(e)}")
 
     def get_quote(self, symbol: str) -> dict:
-        """Get current quote for a symbol using yfinance (Blocking call, run in thread)."""
-        ticker = yf.Ticker(symbol)
+        """Get current quote for a symbol using Yahoo API directly."""
+        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124"
+        }
+        
         try:
-            info = ticker.fast_info
-            price = info.last_price
-            prev_close = info.previous_close
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(url, headers=headers)
+                res.raise_for_status()
+                data = res.json()
+                
+            result = data.get("quoteResponse", {}).get("result", [])
+            if not result:
+                raise Exception("No quote data returned for symbol")
+                
+            info = result[0]
+            price = info.get("regularMarketPrice", 0.0)
+            prev_close = info.get("regularMarketPreviousClose", price)
             change = price - prev_close
             percent_change = (change / prev_close) * 100 if prev_close else 0.0
             
             return {
                 "symbol": symbol,
-                "name": symbol, # fast_info doesn't easily return name, symbol is fine
+                "name": info.get("shortName", symbol),
                 "price": price,
                 "previous_close": prev_close,
                 "change": change,
                 "percent_change": percent_change
             }
         except Exception as e:
-             raise Exception(f"Failed to fetch quote using yfinance: {e}")
+             raise Exception(f"Failed to fetch quote from Yahoo API: {e}")
