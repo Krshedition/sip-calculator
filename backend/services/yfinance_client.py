@@ -91,7 +91,7 @@ class YFinanceClient:
 
     def get_quote(self, symbol: str) -> dict:
         """Get current quote for a symbol using Yahoo API directly."""
-        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
+        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124"
         }
@@ -102,19 +102,19 @@ class YFinanceClient:
                 res.raise_for_status()
                 data = res.json()
                 
-            result = data.get("quoteResponse", {}).get("result", [])
+            result = data.get("chart", {}).get("result", [])
             if not result:
                 raise Exception("No quote data returned for symbol")
                 
-            info = result[0]
-            price = info.get("regularMarketPrice", 0.0)
-            prev_close = info.get("regularMarketPreviousClose", price)
+            meta = result[0].get("meta", {})
+            price = meta.get("regularMarketPrice", 0.0)
+            prev_close = meta.get("chartPreviousClose", price)
             change = price - prev_close
             percent_change = (change / prev_close) * 100 if prev_close else 0.0
             
             return {
                 "symbol": symbol,
-                "name": info.get("shortName", symbol),
+                "name": meta.get("shortName", symbol),
                 "price": price,
                 "previous_close": prev_close,
                 "change": change,
